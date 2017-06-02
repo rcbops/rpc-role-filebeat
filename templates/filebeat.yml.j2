@@ -31,7 +31,7 @@ filebeat:
 output:
   logstash:
     hosts:
-{% for host in filebeat_logstash_hosts.split(',') %}
+{% for host in filebeat_logstash_hosts %}
     - '{{ host }}'
 {% endfor %}
 shipper: null
