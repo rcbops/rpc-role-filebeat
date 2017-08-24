@@ -28,7 +28,9 @@ filebeat_apt_packages:
 
 filebeat_logstash_port: "{{ logstash_beats_port |default(5044) }}"
 
-# NOTE(d34dh0r53): This requires Ansible > 2.1
+# NOTE(sigmavirus24): Once we upgrade to Ansible 2.1, we can use the extract
+# filter
+#"{{ groups['logstash_all'] | map('extract', hostvars, ['container_address']) | list }}"
 filebeat_logstash_hosts: "{{ groups['logstash_all'] | map('extract', hostvars, ['container_address']) | list }}"
 
 # NOTE(sigmavirus24): Explanation of the regular expression:
@@ -73,254 +75,302 @@ multiline_swift_account_replicator_pattern: '^[A-Za-z]+[[:space:]]* +[0-9]{1,2} 
 #                                          Month                   Day         Time       Host           Python Module      Status
 multiline_swift_object_replicator_pattern: '^[A-Za-z]+[[:space:]]* +[0-9]{1,2} +[0-9:\.]+ +[A-Za-z0-9-]+ object-replicator: +[A-Za-z0-9-\ ]+'
 
+filebeat_log_store_path: '/var/log/log-storage'
+
+filebeat_registry_file: '/var/lib/filebeat/registry'
+
+file_beat_config:
+  registry_file: "{{ filebeat_registry_file }}"
+  filebeat:
+    prospectors: []
+  output:
+    logstash:
+      hosts: "{{ filebeat_logstash_hosts.split(',') }}"
+  shipper: null
+  logging:
+    files:
+      rotateeverybytes: 10485760  # = 10MB
+      keepfiles: 7
+
 
 filebeat_logging_paths:
-  - paths:
-    - '/var/log/cinder/*.log'
+  - groups:
+      - cinder_all
+    paths: []
     document_type: openstack
     tags:
-    - openstack
-    - oslofmt
-    - cinder
+      - openstack
+      - oslofmt
+      - cinder
     multiline:
       pattern: "{{ multiline_openstack_pattern }}"
       negate: 'true'
       match: after
-  - paths:
-    - '/var/log/glance/*.log'
+  - groups:
+      - glance_all
+    paths: []
     document_type: openstack
     tags:
-    - openstack
-    - oslofmt
-    - glance
+      - openstack
+      - oslofmt
+      - glance
     multiline:
       pattern: "{{ multiline_openstack_pattern }}"
       negate: 'true'
       match: after
-  - paths:
-    - '/var/log/heat/*.log'
+  - groups:
+      - heat_all
+    paths: []
     document_type: openstack
     tags:
-    - openstack
-    - oslofmt
-    - heat
+      - openstack
+      - oslofmt
+      - heat
     multiline:
       pattern: "{{ multiline_openstack_pattern }}"
       negate: 'true'
       match: after
-  - paths:
-    - '/var/log/horizon/*.log'
+  - groups:
+      - horizon_all
+    paths: []
     document_type: openstack
     tags:
-    - openstack
-    - oslofmt
-    - horizon
+      - openstack
+      - oslofmt
+      - horizon
     multiline:
       pattern: "{{ multiline_openstack_pattern }}"
       negate: 'true'
       match: after
-  - paths:
-    - '/var/log/keystone/keystone.log'
+  - groups:
+      - keystone_all
+    paths:
+      - keystone.log
     document_type: openstack
     tags:
-    - openstack
-    - oslofmt
-    - keystone
+      - openstack
+      - oslofmt
+      - keystone
     multiline:
       pattern: "{{ multiline_openstack_pattern }}"
       negate: 'true'
       match: after
-  - paths:
-    - '/var/log/keystone/ssl_access.log'
+  - groups:
+      - keystone_all
+    paths:
+      - ssl_access.log
     tags:
-    - openstack
-    - apache
-    - apache-access
-    - keystone
-  - paths:
-    - '/var/log/keystone/keystone-apache-error.log'
+      - openstack
+      - apache
+      - apache-access
+      - keystone
+  - groups:
+      - keystone_all
+    paths:
+      - keystone-apache-error.log
     tags:
-    - openstack
-    - apache
-    - apache-error
-    - keystone
+      - openstack
+      - apache
+      - apache-error
+      - keystone
     multiline:
       pattern: "{{ multiline_keystone_error_pattern }}"
       negate: 'true'
       match: after
-  - paths:
-    - '/var/log/neutron/*.log'
+  - groups:
+      - neutron_all
+    paths: []
     document_type: openstack
     tags:
-    - openstack
-    - oslofmt
-    - neutron
+      - openstack
+      - oslofmt
+      - neutron
     multiline:
       pattern: "{{ multiline_openstack_pattern }}"
       negate: 'true'
       match: after
-  - paths:
-    - '/var/log/nova/*.log'
+  - groups:
+      - nova_all
+    paths: []
     document_type: openstack
     tags:
-    - openstack
-    - oslofmt
-    - nova
+      - openstack
+      - oslofmt
+      - nova
     multiline:
       pattern: "{{ multiline_openstack_pattern }}"
       negate: 'true'
       match: after
-  - paths:
-    - '/var/log/octavia/*.log'
+  - groups:
+      - magnum_all
+    paths: []
     document_type: openstack
     tags:
-    - openstack
-    - oslofmt
-    - octavia
+      - openstack
+      - oslofmt
+      - magnum
+    multiline:
+      pattern: "{{ multiline_openstack_pattern }}"
+      negate: 'true'
+      match: after
+  - groups:
+      - octavia_all
+    paths:
+      - '/var/log/octavia/*.log'
+    document_type: openstack
+    tags:
+      - openstack
+      - oslofmt
+      - octavia
     multiline:
       pattern: "{{ multiline_openstack_pattern }}"
       negate: 'true'
       match: after
   # NOTE(sigmavirus24): Swift does not use oslo.log, so we cannot rely on our
   # oslo-based pattern
-  - paths:
-    - '/var/log/swift/account*.log'
+  - groups:
+      - swift_all
+    paths:
+      - 'account*.log'
     document_type: openstack
     tags:
-    - openstack
-    - swift
-    - swift-account
+      - openstack
+      - swift
+      - swift-account
     multiline:
       pattern: "{{ multiline_swift_account_replicator_pattern }}"
       negate: false
       match: after
-  - paths:
-    - '/var/log/swift/container*.log'
+  - groups:
+      - swift_all
+    paths:
+      - 'container*.log'
     document_type: openstack
     tags:
-    - openstack
-    - swift
-    - swift-container
+      - openstack
+      - swift
+      - swift-container
     multiline:
       pattern: "{{ multiline_swift_container_replicator_pattern }}"
       negate: false
       match: after
-  - paths:
-    - '/var/log/swift/object*.log'
+  - groups:
+      - swift_all
+    paths:
+      - 'object*.log'
     document_type: openstack
     tags:
-    - openstack
-    - swift
-    - swift-object
+      - openstack
+      - swift
+      - swift-object
     multiline:
       pattern: "{{ multiline_swift_object_replicator_pattern }}"
       negate: false
       match: after
-  - paths:
-    - '/var/log/swift/proxy*.log'
+  - groups:
+      - swift_all
+    paths:
+      - 'proxy*.log'
     document_type: openstack
     tags:
-    - openstack
-    - swift
-    - swift-proxy
+      - openstack
+      - swift
+      - swift-proxy
   # Start of non-OpenStack services whose logs we'd like to ship
-  - paths:
-    - '/var/log/apparmor/*.log'
+  - groups:
+      - haproxy_all
+    paths: []
     tags:
-    - apparmor
-    - infrastructure
-  - paths:
-    - '/var/log/audit/*.log'
+      - haproxy
+      - infrastructure
+  - groups:
+      - lxc_hosts
+    paths: []
     tags:
-    - audit
-  - paths:
-    - '/var/log/fsck/*'
+      - lxc
+      - infrastructure
+  - groups:
+      - galera_all
+    paths:
+      - '/var/log/mysql_logs/*.log'
     tags:
-    - fsck
-  - paths:
-    - '/var/log/haproxy/*.log'
-    tags:
-    - haproxy
-    - infrastructure
-  - paths:
-    - '/var/log/libvirt/*.log'
-    - '/var/log/libvirt/*/*.log'
-    tags:
-    - libvirt
-  - paths:
-    - '/var/log/lxc/*.log'
-    tags:
-    - lxc
-    - infrastructure
-  - paths:
-    - '/var/log/upstart/*.log'
-    tags:
-    - upstart
-    - infrastructure
-  - paths:
-    - '/var/log/mysql_logs/*.log'
-    tags:
-    - galera
-    - mysql
-    - infrastructure
+      - galera
+      - mysql
+      - infrastructure
     multiline:
       # See https://play.golang.org/p/1r4iM0xwjQ
       pattern: '^([^0-9W]|$)'
       negate: 'false'
       match: after
-  - paths:
-    - '/var/log/rabbitmq/*'
+  - groups:
+      - rabbitmq_all
+    paths: []
     multiline:
       # See https://play.golang.org/p/2SwhbSZxue
       pattern: '^='
       negate: 'true'
       match: after
     tags:
-    - rabbitmq
-    - infrastructure
-  - paths:
-    - '/var/log/elasticsearch/*.log'
+      - rabbitmq
+      - infrastructure
+  - groups:
+      - elasticsearch_all
+    paths: []
     multiline:
       # See https://play.golang.org/p/Fo3bb7Mcgr
       pattern: '^[^\[]'
       negate: 'false'
       match: after
     tags:
-    - elasticsearch
-    - infrastructure
-    - logging
-  - paths:
-    - '/var/log/ceph/ceph-mon.*.log'
+      - elasticsearch
+      - infrastructure
+      - logging
+  - groups:
+      - logstash_all
+    paths: []
+    tags:
+      - logstash
+      - infrastructure
+      - logging
+  - groups:
+      - ceph_all
+    paths:
+      - 'ceph-mon.*.log'
     multiline:
       pattern: '^[a-z_]* '
       negate: 'false'
       match: after
     tags:
-    - ceph-mon
-    - ceph
-    - infrastructure
-  - paths:
-    - '/var/log/ceph/ceph-osd.*.log'
+      - ceph-mon
+      - ceph
+      - infrastructure
+  - groups:
+      - ceph_all
+    paths:
+      - 'ceph-osd.*.log'
     tags:
-    - ceph-osd
-    - ceph
-    - infrastructure
-  - paths:
-    - '/var/log/nginx/*access.log'
+      - ceph-osd
+      - ceph
+      - infrastructure
+  - groups:
+      - repo_all
+    paths:
+      - '*access.log'
     tags:
-    - repo
-    - nginx
-    - nginx-access
-    - infrastructure
-  - paths:
-    - '/var/log/nginx/*error.log'
+      - repo
+      - nginx
+      - nginx-access
+      - infrastructure
+  - groups:
+      - repo_all
+    paths:
+      - '*error.log'
     tags:
-    - repo
-    - nginx
-    - nginx-error
-    - infrastructure
+      - repo
+      - nginx
+      - nginx-error
+      - infrastructure
 
 
 filebeat_configuration_files:
   - { src: "filebeat.yml.j2", dest: "/etc/filebeat/filebeat.yml" }
-
