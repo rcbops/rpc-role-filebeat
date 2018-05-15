@@ -120,6 +120,18 @@ filebeat_logging_paths:
       negate: 'true'
       match: after
   - paths:
+    - '/var/log/keystone/keystone-access.log'
+    document_type: openstack
+    tags:
+    - openstack
+    - oslofmt
+    - keystone
+    - keystone-access
+    multiline:
+      pattern: "{{ multiline_openstack_pattern }}"
+      negate: 'true'
+      match: after
+   - paths:
     - '/var/log/keystone/keystone.log'
     document_type: openstack
     tags:
